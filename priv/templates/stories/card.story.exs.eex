@@ -1,0 +1,44 @@
+defmodule Storybook.Components.CoreComponents.Card do
+  use PhoenixStorybook.Story, :component
+
+  def function, do: &<%= web_module %>.CoreComponents.card/1
+  def imports, do: [{<%= web_module %>.CoreComponents, button: 1, badge: 1}]
+  def render_source, do: :function
+  def layout, do: :one_column
+
+  def variations do
+    [
+      %Variation{
+        id: :basic,
+        description: "Basic card",
+        slots: ["This is a basic card with just content."]
+      },
+      %Variation{
+        id: :with_header,
+        description: "Card with header",
+        slots: [
+          "<:header>Card Title</:header>",
+          "Card content goes here. You can put any content inside the card."
+        ]
+      },
+      %Variation{
+        id: :with_header_and_footer,
+        description: "Card with header and footer",
+        slots: [
+          "<:header>Card Title</:header>",
+          "Card content goes here with header and footer.",
+          "<:footer><.button size=\"sm\">Save</.button> <.button variant=\"outline\" size=\"sm\">Cancel</.button></:footer>"
+        ]
+      },
+      %Variation{
+        id: :feature_card,
+        description: "Feature card example",
+        slots: [
+          "<:header>Feature Highlight</:header>",
+          "<div class=\"space-y-2\"><p>This card showcases a feature with a badge.</p><.badge variant=\"success\">New</.badge></div>",
+          "<:footer><.button variant=\"outline\" size=\"sm\">Learn More</.button></:footer>"
+        ]
+      }
+    ]
+  end
+end

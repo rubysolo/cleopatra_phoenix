@@ -1,0 +1,54 @@
+defmodule Storybook.Components.CoreComponents.Dropdown do
+  use PhoenixStorybook.Story, :component
+
+  def function, do: &<%= web_module %>.CoreComponents.dropdown_menu/1
+  def imports, do: [{<%= web_module %>.CoreComponents, button: 1, dropdown_item: 1, dropdown_header: 1, dropdown_divider: 1}]
+  def render_source, do: :function
+
+  def variations do
+    [
+      %Variation{
+        id: :basic,
+        description: "Basic dropdown",
+        attributes: %{id: "basic-dropdown"},
+        slots: [
+          "<:trigger><.button variant=\"outline\">Open Menu</.button></:trigger>",
+          """
+          <.dropdown_item>Edit</.dropdown_item>
+          <.dropdown_item>Duplicate</.dropdown_item>
+          <.dropdown_item>Archive</.dropdown_item>
+          """
+        ]
+      },
+      %Variation{
+        id: :with_sections,
+        description: "Dropdown with headers and dividers",
+        attributes: %{id: "sections-dropdown"},
+        slots: [
+          "<:trigger><.button variant=\"outline\">Actions</.button></:trigger>",
+          """
+          <.dropdown_header label="Actions" />
+          <.dropdown_item>Edit</.dropdown_item>
+          <.dropdown_item>Duplicate</.dropdown_item>
+          <.dropdown_divider />
+          <.dropdown_header label="Danger Zone" />
+          <.dropdown_item variant="destructive">Delete</.dropdown_item>
+          """
+        ]
+      },
+      %Variation{
+        id: :right_aligned,
+        description: "Right-aligned dropdown",
+        attributes: %{id: "right-dropdown", position: "right"},
+        slots: [
+          "<:trigger><.button variant=\"outline\">Right Menu</.button></:trigger>",
+          """
+          <.dropdown_item>Option 1</.dropdown_item>
+          <.dropdown_item>Option 2</.dropdown_item>
+          <.dropdown_item>Option 3</.dropdown_item>
+          """
+        ]
+      }
+    ]
+  end
+end

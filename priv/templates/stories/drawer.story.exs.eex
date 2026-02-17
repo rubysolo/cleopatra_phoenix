@@ -1,0 +1,60 @@
+defmodule Storybook.Components.CoreComponents.Drawer do
+  use PhoenixStorybook.Story, :component
+
+  def function, do: &<%= web_module %>.CoreComponents.drawer/1
+  def imports, do: [{<%= web_module %>.CoreComponents, button: 1, show_drawer: 1}]
+  def render_source, do: :function
+
+  def template do
+    """
+    <div>
+      <.button phx-click={show_drawer(":variation_id")}>
+        Open Drawer
+      </.button>
+      <.psb-variation/>
+    </div>
+    """
+  end
+
+  def variations do
+    [
+      %Variation{
+        id: :right,
+        description: "Right drawer (default)",
+        attributes: %{id: "right", position: "right"},
+        slots: [
+          "<:title>Right Drawer</:title>",
+          "<p>This drawer slides in from the right.</p>",
+          "<:actions><.button>Save</.button></:actions>"
+        ]
+      },
+      %Variation{
+        id: :left,
+        description: "Left drawer",
+        attributes: %{id: "left", position: "left"},
+        slots: [
+          "<:title>Left Drawer</:title>",
+          "<p>This drawer slides in from the left.</p>"
+        ]
+      },
+      %Variation{
+        id: :top,
+        description: "Top drawer",
+        attributes: %{id: "top", position: "top"},
+        slots: [
+          "<:title>Top Drawer</:title>",
+          "<p>This drawer slides down from the top.</p>"
+        ]
+      },
+      %Variation{
+        id: :bottom,
+        description: "Bottom drawer",
+        attributes: %{id: "bottom", position: "bottom"},
+        slots: [
+          "<:title>Bottom Drawer</:title>",
+          "<p>This drawer slides up from the bottom.</p>"
+        ]
+      }
+    ]
+  end
+end

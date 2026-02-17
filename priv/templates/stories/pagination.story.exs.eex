@@ -1,0 +1,49 @@
+defmodule Storybook.Components.CoreComponents.Pagination do
+  use PhoenixStorybook.Story, :component
+
+  def function, do: &<%= web_module %>.CoreComponents.pagination/1
+  def render_source, do: :function
+  def layout, do: :one_column
+
+  def variations do
+    [
+      %Variation{
+        id: :default,
+        description: "Default pagination",
+        attributes: %{page: 5, total_pages: 10}
+      },
+      %Variation{
+        id: :first_page,
+        description: "First page",
+        attributes: %{page: 1, total_pages: 10}
+      },
+      %Variation{
+        id: :last_page,
+        description: "Last page",
+        attributes: %{page: 10, total_pages: 10}
+      },
+      %VariationGroup{
+        id: :sizes,
+        description: "Pagination sizes",
+        variations:
+          for size <- ~w(sm default lg) do
+            %Variation{
+              id: String.to_atom(size),
+              attributes: %{page: 3, total_pages: 8, size: size}
+            }
+          end
+      },
+      %VariationGroup{
+        id: :variants,
+        description: "Pagination variants",
+        variations:
+          for variant <- ~w(default simple outline) do
+            %Variation{
+              id: String.to_atom(variant),
+              attributes: %{page: 4, total_pages: 10, variant: variant}
+            }
+          end
+      }
+    ]
+  end
+end

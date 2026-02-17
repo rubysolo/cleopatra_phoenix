@@ -1,0 +1,59 @@
+defmodule Storybook.Components.CoreComponents.Progress do
+  use PhoenixStorybook.Story, :component
+
+  def function, do: &<%= web_module %>.CoreComponents.progress/1
+  def render_source, do: :function
+  def layout, do: :one_column
+
+  def variations do
+    [
+      %Variation{
+        id: :default,
+        description: "Default progress bar",
+        attributes: %{value: 60}
+      },
+      %VariationGroup{
+        id: :sizes,
+        description: "Progress sizes",
+        variations:
+          for size <- ~w(xs sm default lg xl) do
+            %Variation{
+              id: String.to_atom(size),
+              attributes: %{value: 50, size: size}
+            }
+          end
+      },
+      %VariationGroup{
+        id: :colors,
+        description: "Progress colors",
+        variations:
+          for color <- ~w(default success warning destructive info) do
+            %Variation{
+              id: String.to_atom(color),
+              attributes: %{value: 65, color: color}
+            }
+          end
+      },
+      %Variation{
+        id: :striped,
+        description: "Striped progress",
+        attributes: %{value: 70, striped: true}
+      },
+      %Variation{
+        id: :striped_animated,
+        description: "Striped animated progress",
+        attributes: %{value: 70, striped: true, animated: true}
+      },
+      %Variation{
+        id: :indeterminate,
+        description: "Indeterminate progress",
+        attributes: %{indeterminate: true}
+      },
+      %Variation{
+        id: :labeled,
+        description: "Labeled progress",
+        attributes: %{value: 75, labeled: true, size: "lg"}
+      }
+    ]
+  end
+end

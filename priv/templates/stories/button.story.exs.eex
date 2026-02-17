@@ -1,0 +1,86 @@
+defmodule Storybook.Components.CoreComponents.Button do
+  use PhoenixStorybook.Story, :component
+
+  def function, do: &<%= web_module %>.CoreComponents.button/1
+  def imports, do: [{<%= web_module %>.CoreComponents, icon: 1}]
+  def render_source, do: :function
+
+  def variations do
+    [
+      %VariationGroup{
+        id: :variants,
+        description: "Button variants",
+        variations:
+          for variant <- ~w(default secondary outline ghost link destructive) do
+            %Variation{
+              id: String.to_atom(variant),
+              attributes: %{variant: variant},
+              slots: [String.capitalize(variant)]
+            }
+          end
+      },
+      %VariationGroup{
+        id: :semantic,
+        description: "Semantic variants",
+        variations:
+          for variant <- ~w(success warning info) do
+            %Variation{
+              id: String.to_atom(variant),
+              attributes: %{variant: variant},
+              slots: [String.capitalize(variant)]
+            }
+          end
+      },
+      %VariationGroup{
+        id: :soft,
+        description: "Soft variants",
+        variations:
+          for variant <- ~w(soft-primary soft-destructive soft-success soft-warning soft-info) do
+            %Variation{
+              id: String.to_atom(String.replace(variant, "-", "_")),
+              attributes: %{variant: variant},
+              slots: [variant |> String.replace("-", " ") |> String.capitalize()]
+            }
+          end
+      },
+      %VariationGroup{
+        id: :sizes,
+        description: "Button sizes",
+        variations:
+          for size <- ~w(sm md lg) do
+            %Variation{
+              id: String.to_atom(size),
+              attributes: %{size: size},
+              slots: ["Size #{size}"]
+            }
+          end
+      },
+      %VariationGroup{
+        id: :states,
+        description: "Button states",
+        variations: [
+          %Variation{
+            id: :loading,
+            attributes: %{loading: true},
+            slots: ["Loading"]
+          },
+          %Variation{
+            id: :disabled,
+            attributes: %{disabled: true},
+            slots: ["Disabled"]
+          },
+          %Variation{
+            id: :icon_only,
+            attributes: %{icon_only: true, variant: "outline"},
+            slots: ["<.icon name=\"hero-plus\" />"]
+          },
+          %Variation{
+            id: :full_width,
+            attributes: %{full_width: true},
+            slots: ["Full Width"]
+          }
+        ]
+      }
+    ]
+  end
+end

@@ -1,0 +1,62 @@
+defmodule Storybook.Components.CoreComponents.Modal do
+  use PhoenixStorybook.Story, :component
+
+  def function, do: &<%= web_module %>.CoreComponents.modal/1
+  def imports, do: [{<%= web_module %>.CoreComponents, button: 1, show_modal: 1}]
+  def render_source, do: :function
+
+  def template do
+    """
+    <div>
+      <.button phx-click={show_modal(":variation_id")}>
+        Open Modal
+      </.button>
+      <.psb-variation/>
+    </div>
+    """
+  end
+
+  def variations do
+    [
+      %Variation{
+        id: :default,
+        description: "Default modal",
+        attributes: %{id: "default", show: false},
+        slots: [
+          "<:title>Default Modal</:title>",
+          "This is the default modal content.",
+          "<:actions><.button>Confirm</.button></:actions>"
+        ]
+      },
+      %Variation{
+        id: :small,
+        description: "Small modal",
+        attributes: %{id: "small", size: "sm", show: false},
+        slots: [
+          "<:title>Small Modal</:title>",
+          "This is a small modal."
+        ]
+      },
+      %Variation{
+        id: :large,
+        description: "Large modal",
+        attributes: %{id: "large", size: "lg", show: false},
+        slots: [
+          "<:title>Large Modal</:title>",
+          "<:subtitle>With a subtitle</:subtitle>",
+          "This is a large modal with more content space.",
+          "<:actions><.button variant=\"destructive\">Delete</.button> <.button variant=\"outline\">Cancel</.button></:actions>"
+        ]
+      },
+      %Variation{
+        id: :extra_large,
+        description: "Extra large modal",
+        attributes: %{id: "extra_large", size: "xl", show: false},
+        slots: [
+          "<:title>Extra Large Modal</:title>",
+          "This is an extra large modal for complex content."
+        ]
+      }
+    ]
+  end
+end

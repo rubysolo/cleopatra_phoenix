@@ -1,0 +1,63 @@
+defmodule Storybook.Components.CoreComponents.Accordion do
+  use PhoenixStorybook.Story, :component
+
+  def function, do: &<%= web_module %>.CoreComponents.accordion/1
+  def imports, do: [{<%= web_module %>.CoreComponents, accordion_item: 1}]
+  def render_source, do: :function
+  def layout, do: :one_column
+
+  def variations do
+    [
+      %Variation{
+        id: :default,
+        description: "Default accordion",
+        slots: [
+          """
+          <.accordion_item title="What is Phoenix?">
+            Phoenix is a web framework for the Elixir programming language that gives you peace of mind from prototype to production.
+          </.accordion_item>
+          <.accordion_item title="What is LiveView?">
+            LiveView is a library for building interactive, real-time web applications without writing JavaScript.
+          </.accordion_item>
+          <.accordion_item title="What is Tailwind CSS?">
+            Tailwind CSS is a utility-first CSS framework for rapidly building custom user interfaces.
+          </.accordion_item>
+          """
+        ]
+      },
+      %Variation{
+        id: :flush,
+        description: "Flush variant (no borders on sides)",
+        attributes: %{variant: "flush"},
+        slots: [
+          """
+          <.accordion_item title="First Section">
+            Content for the first section.
+          </.accordion_item>
+          <.accordion_item title="Second Section">
+            Content for the second section.
+          </.accordion_item>
+          """
+        ]
+      },
+      %Variation{
+        id: :separated,
+        description: "Separated variant",
+        attributes: %{variant: "separated"},
+        slots: [
+          """
+          <.accordion_item title="Item One">
+            Content for item one.
+          </.accordion_item>
+          <.accordion_item title="Item Two">
+            Content for item two.
+          </.accordion_item>
+          <.accordion_item title="Item Three">
+            Content for item three.
+          </.accordion_item>
+          """
+        ]
+      }
+    ]
+  end
+end

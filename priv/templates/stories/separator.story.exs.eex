@@ -1,0 +1,41 @@
+defmodule Storybook.Components.CoreComponents.Separator do
+  use PhoenixStorybook.Story, :component
+
+  def function, do: &<%= web_module %>.CoreComponents.separator/1
+  def render_source, do: :function
+  def layout, do: :one_column
+
+  def variations do
+    [
+      %Variation{
+        id: :horizontal,
+        description: "Horizontal separator (default)"
+      },
+      %Variation{
+        id: :vertical,
+        description: "Vertical separator",
+        attributes: %{orientation: "vertical", class: "h-20"}
+      },
+      %Variation{
+        id: :dashed,
+        description: "Dashed separator",
+        attributes: %{dashed: true}
+      },
+      %Variation{
+        id: :thick,
+        description: "Thick separator",
+        attributes: %{thick: true}
+      },
+      %Variation{
+        id: :with_label,
+        description: "Separator with label",
+        attributes: %{label: "OR"}
+      },
+      %Variation{
+        id: :dashed_thick,
+        description: "Dashed and thick",
+        attributes: %{dashed: true, thick: true}
+      }
+    ]
+  end
+end

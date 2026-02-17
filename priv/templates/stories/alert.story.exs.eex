@@ -1,0 +1,64 @@
+defmodule Storybook.Components.CoreComponents.Alert do
+  use PhoenixStorybook.Story, :component
+
+  def function, do: &<%= web_module %>.CoreComponents.alert/1
+  def render_source, do: :function
+
+  def variations do
+    [
+      %VariationGroup{
+        id: :variants,
+        description: "Alert variants",
+        variations:
+          for variant <- ~w(info success warning destructive) do
+            %Variation{
+              id: String.to_atom(variant),
+              attributes: %{
+                variant: variant,
+                title: "#{String.capitalize(variant)} Alert",
+                id: "alert-#{variant}"
+              },
+              slots: ["This is a #{variant} alert message."]
+            }
+          end
+      },
+      %VariationGroup{
+        id: :minimal,
+        description: "Minimal variants",
+        variations:
+          for variant <- ~w(info success warning destructive) do
+            %Variation{
+              id: String.to_atom("minimal_#{variant}"),
+              attributes: %{
+                variant: variant,
+                minimal: true,
+                title: "#{String.capitalize(variant)} Minimal",
+                id: "alert-minimal-#{variant}"
+              },
+              slots: ["This is a minimal #{variant} alert."]
+            }
+          end
+      },
+      %Variation{
+        id: :without_title,
+        description: "Alert without title",
+        attributes: %{
+          variant: "info",
+          id: "alert-no-title"
+        },
+        slots: ["This is an alert without a title."]
+      },
+      %Variation{
+        id: :dismissible,
+        description: "Dismissible alert",
+        attributes: %{
+          variant: "warning",
+          title: "Dismissible Alert",
+          dismissible: true,
+          id: "alert-dismissible"
+        },
+        slots: ["Click the X to dismiss this alert."]
+      }
+    ]
+  end
+end

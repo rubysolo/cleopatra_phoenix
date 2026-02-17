@@ -1,0 +1,42 @@
+defmodule Storybook.Components.CoreComponents.Breadcrumb do
+  use PhoenixStorybook.Story, :component
+
+  def function, do: &<%= web_module %>.CoreComponents.breadcrumb/1
+  def render_source, do: :function
+  def layout, do: :one_column
+
+  def variations do
+    [
+      %Variation{
+        id: :simple,
+        description: "Simple breadcrumb",
+        slots: [
+          "<:item href=\"#\" label=\"Home\" />",
+          "<:item href=\"#\" label=\"Products\" />",
+          "<:item label=\"Details\" />"
+        ]
+      },
+      %Variation{
+        id: :custom_separator,
+        description: "Custom separator",
+        attributes: %{separator: ">"},
+        slots: [
+          "<:item href=\"#\" label=\"Dashboard\" />",
+          "<:item href=\"#\" label=\"Users\" />",
+          "<:item label=\"Profile\" />"
+        ]
+      },
+      %Variation{
+        id: :contained,
+        description: "Contained breadcrumb",
+        attributes: %{contained: true},
+        slots: [
+          "<:item href=\"#\" label=\"Home\" />",
+          "<:item href=\"#\" label=\"Settings\" />",
+          "<:item href=\"#\" label=\"General\" />",
+          "<:item label=\"Appearance\" />"
+        ]
+      }
+    ]
+  end
+end

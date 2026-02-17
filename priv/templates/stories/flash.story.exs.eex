@@ -1,0 +1,46 @@
+defmodule Storybook.Components.CoreComponents.Flash do
+  use PhoenixStorybook.Story, :component
+
+  def function, do: &<%= web_module %>.CoreComponents.flash/1
+  def imports, do: [{<%= web_module %>.CoreComponents, show: 1, button: 1}]
+  def render_source, do: :function
+  def layout, do: :one_column
+
+  def template do
+    """
+    <div>
+      <.button phx-click={show("#:variation_id")}>
+        Trigger flash
+      </.button>
+      <.psb-variation/>
+    </div>
+    """
+  end
+
+  def variations do
+    [
+      %Variation{
+        id: :info,
+        description: "Info flash",
+        attributes: %{
+          id: "info",
+          kind: :info,
+          title: "Did you know?",
+          style: "display: none; position: relative; top: auto; right: auto;"
+        },
+        slots: ["This is an informational flash message."]
+      },
+      %Variation{
+        id: :error,
+        description: "Error flash",
+        attributes: %{
+          id: "error",
+          kind: :error,
+          title: "Oops!",
+          style: "display: none; position: relative; top: auto; right: auto;"
+        },
+        slots: ["Sorry, something went wrong."]
+      }
+    ]
+  end
+end

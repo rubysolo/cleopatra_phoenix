@@ -1,0 +1,1211 @@
+defmodule <%= web_module %>.CoreComponents do
+  @moduledoc """
+  Provides core UI components built on the Cleopatra design system.
+
+  Uses Tailwind CSS v4 with semantic color tokens (bg-primary, text-foreground,
+  border-border, etc.) and Cleopatra component CSS classes.
+  """
+  use Phoenix.Component
+  use Gettext, backend: <%= web_module %>.Gettext
+
+  alias Phoenix.LiveView.JS
+
+  ## Flash
+
+  @doc """
+  Renders flash notices using Cleopatra alert styling.
+
+  ## Examples
+
+      <.flash kind={:info} flash={@flash} />
+      <.flash kind={:info} phx-mounted={show("#flash")}>Welcome Back!</.flash>
+  """
+  attr :id, :string, doc: "the optional id of flash container"
+  attr :flash, :map, default: %{}, doc: "the map of flash messages to display"
+  attr :title, :string, default: nil
+  attr :kind, :atom, values: [:info, :error], doc: "used for styling and flash lookup"
+  attr :rest, :global, doc: "the arbitrary HTML attributes to add to the flash container"
+
+  slot :inner_block, doc: "the optional inner block that renders the flash message"
+
+  def flash(assigns) do
+    assigns = assign_new(assigns, :id, fn -> "flash-#{assigns.kind}" end)
+
+    ~H"""
+    <div
+      :if={msg = render_slot(@inner_block) || Phoenix.Flash.get(@flash, @kind)}
+      id={@id}
+      phx-click={JS.push("lv:clear-flash", value: %{key: @kind}) |> hide("##{@id}")}
+      role="alert"
+      class="fixed top-4 right-4 z-50"
+      {@rest}
+    >
+      <div class={[
+        "alert w-80 sm:w-96 max-w-96",
+        @kind == :info && "alert-info",
+        @kind == :error && "alert-destructive"
+      ]}>
+        <div class="alert-icon">
+          <.icon :if={@kind == :info} name="hero-information-circle" class="size-5" />
+          <.icon :if={@kind == :error} name="hero-exclamation-circle" class="size-5" />
+        </div>
+        <div class="alert-content">
+          <p :if={@title} class="alert-title">{@title}</p>
+          <p class="alert-description">{msg}</p>
+        </div>
+        <button type="button" class="alert-close cursor-pointer" aria-label={gettext("close")}>
+          <.icon name="hero-x-mark" class="size-5" />
+        </button>
+      </div>
+    </div>
+    """
+  end
+
+  ## Button
+
+  @doc """
+  Renders a button with Cleopatra styling.
+
+  ## Examples
+
+      <.button>Send!</.button>
+      <.button variant="destructive">Delete</.button>
+      <.button variant="outline" size="sm">Small</.button>
+      <.button navigate={~p"/"}>Home</.button>
+  """
+  attr :rest, :global, include: ~w(href navigate patch method download name value disabled)
+  attr :class, :any, default: nil
+  attr :variant, :string,
+    default: "default",
+    values: ~w(default secondary outline ghost link destructive success warning info
+               soft-primary soft-destructive soft-success soft-warning soft-info)
+  attr :size, :string, default: "md", values: ~w(sm md lg)
+  attr :loading, :boolean, default: false
+  attr :icon_only, :boolean, default: false
+  attr :full_width, :boolean, default: false
+  slot :inner_block, required: true
+
+  def button(%{rest: rest} = assigns) do
+    assigns =
+      assign(assigns, :computed_class, [
+        "btn",
+        "btn-#{assigns.variant}",
+        assigns.size != "md" && "btn-#{assigns.size}",
+        assigns.loading && "btn-loading",
+        assigns.icon_only && "btn-icon",
+        assigns.full_width && "btn-full",
+        assigns.class
+      ])
+
+    if rest[:href] || rest[:navigate] || rest[:patch] do
+      ~H"""
+      <.link class={@computed_class} {@rest}>
+        {render_slot(@inner_block)}
+      </.link>
+      """
+    else
+      ~H"""
+      <button class={@computed_class} {@rest}>
+        {render_slot(@inner_block)}
+      </button>
+      """
+    end
+  end
+
+  ## Input
+
+  @doc """
+  Renders an input with label and error messages.
+
+  A `Phoenix.HTML.FormField` may be passed as argument,
+  which is used to retrieve the input name, id, and values.
+  Otherwise all attributes may be passed explicitly.
+
+  ## Types
+
+  This function accepts all HTML input types, considering that:
+
+    * You may also set `type="select"` to render a `<select>` tag
+    * `type="checkbox"` is used exclusively to render boolean values
+    * For live file uploads, see `Phoenix.Component.live_file_input/1`
+
+  ## Examples
+
+      <.input field={@form[:email]} type="email" />
+      <.input name="my-input" errors={["oh no!"]} />
+  """
+  attr :id, :any, default: nil
+  attr :name, :any
+  attr :label, :string, default: nil
+  attr :value, :any
+
+  attr :type, :string,
+    default: "text",
+    values: ~w(checkbox color date datetime-local email file month number password
+               search select tel text textarea time url week hidden)
+
+  attr :field, Phoenix.HTML.FormField,
+    doc: "a form field struct retrieved from the form, for example: @form[:email]"
+
+  attr :errors, :list, default: []
+  attr :checked, :boolean, doc: "the checked flag for checkbox inputs"
+  attr :prompt, :string, default: nil, doc: "the prompt for select inputs"
+  attr :options, :list, doc: "the options to pass to Phoenix.HTML.Form.options_for_select/2"
+  attr :multiple, :boolean, default: false, doc: "the multiple flag for select inputs"
+  attr :class, :any, default: nil, doc: "the input class to use over defaults"
+  attr :error_class, :any, default: nil, doc: "the input error class to use over defaults"
+
+  attr :rest, :global,
+    include: ~w(accept autocomplete capture cols disabled form list max maxlength min minlength
+                multiple pattern placeholder readonly required rows size step)
+
+  def input(%{field: %Phoenix.HTML.FormField{} = field} = assigns) do
+    errors = if Phoenix.Component.used_input?(field), do: field.errors, else: []
+
+    assigns
+    |> assign(field: nil, id: assigns.id || field.id)
+    |> assign(:errors, Enum.map(errors, &translate_error(&1)))
+    |> assign_new(:name, fn -> if assigns.multiple, do: field.name <> "[]", else: field.name end)
+    |> assign_new(:value, fn -> field.value end)
+    |> input()
+  end
+
+  def input(%{type: "hidden"} = assigns) do
+    ~H"""
+    <input type="hidden" id={@id} name={@name} value={@value} {@rest} />
+    """
+  end
+
+  def input(%{type: "checkbox"} = assigns) do
+    assigns =
+      assign_new(assigns, :checked, fn ->
+        Phoenix.HTML.Form.normalize_value("checkbox", assigns[:value])
+      end)
+
+    ~H"""
+    <div class="mb-2">
+      <label class="inline-flex items-center gap-2 cursor-pointer">
+        <input
+          type="hidden"
+          name={@name}
+          value="false"
+          disabled={@rest[:disabled]}
+          form={@rest[:form]}
+        />
+        <input
+          type="checkbox"
+          id={@id}
+          name={@name}
+          value="true"
+          checked={@checked}
+          class={@class || "checkbox"}
+          {@rest}
+        />
+        <span class="text-sm text-foreground">{@label}</span>
+      </label>
+      <.error :for={msg <- @errors}>{msg}</.error>
+    </div>
+    """
+  end
+
+  def input(%{type: "select"} = assigns) do
+    ~H"""
+    <div class="mb-2">
+      <label>
+        <span :if={@label} class="label">{@label}</span>
+        <select
+          id={@id}
+          name={@name}
+          class={[@class || "w-full select", @errors != [] && (@error_class || "select-error")]}
+          multiple={@multiple}
+          {@rest}
+        >
+          <option :if={@prompt} value="">{@prompt}</option>
+          {Phoenix.HTML.Form.options_for_select(@options, @value)}
+        </select>
+      </label>
+      <.error :for={msg <- @errors}>{msg}</.error>
+    </div>
+    """
+  end
+
+  def input(%{type: "textarea"} = assigns) do
+    ~H"""
+    <div class="mb-2">
+      <label>
+        <span :if={@label} class="label">{@label}</span>
+        <textarea
+          id={@id}
+          name={@name}
+          class={[
+            @class || "w-full input textarea",
+            @errors != [] && (@error_class || "input-error")
+          ]}
+          {@rest}
+        >{Phoenix.HTML.Form.normalize_value("textarea", @value)}</textarea>
+      </label>
+      <.error :for={msg <- @errors}>{msg}</.error>
+    </div>
+    """
+  end
+
+  def input(assigns) do
+    ~H"""
+    <div class="mb-2">
+      <label>
+        <span :if={@label} class="label">{@label}</span>
+        <input
+          type={@type}
+          name={@name}
+          id={@id}
+          value={Phoenix.HTML.Form.normalize_value(@type, @value)}
+          class={[
+            @class || "w-full input",
+            @errors != [] && (@error_class || "input-error")
+          ]}
+          {@rest}
+        />
+      </label>
+      <.error :for={msg <- @errors}>{msg}</.error>
+    </div>
+    """
+  end
+
+  defp error(assigns) do
+    ~H"""
+    <p class="mt-1.5 flex gap-2 items-center text-sm text-destructive">
+      <.icon name="hero-exclamation-circle" class="size-5" />
+      {render_slot(@inner_block)}
+    </p>
+    """
+  end
+
+  ## Header
+
+  @doc """
+  Renders a header with title.
+  """
+  slot :inner_block, required: true
+  slot :subtitle
+  slot :actions
+
+  def header(assigns) do
+    ~H"""
+    <header class={[@actions != [] && "flex items-center justify-between gap-6", "pb-4"]}>
+      <div>
+        <h1 class="text-lg font-semibold leading-8">
+          {render_slot(@inner_block)}
+        </h1>
+        <p :if={@subtitle != []} class="text-sm text-muted-foreground">
+          {render_slot(@subtitle)}
+        </p>
+      </div>
+      <div class="flex-none">{render_slot(@actions)}</div>
+    </header>
+    """
+  end
+
+  ## Table
+
+  @doc """
+  Renders a table with generic styling.
+
+  ## Examples
+
+      <.table id="users" rows={@users}>
+        <:col :let={user} label="id">{user.id}</:col>
+        <:col :let={user} label="username">{user.username}</:col>
+      </.table>
+  """
+  attr :id, :string, required: true
+  attr :rows, :list, required: true
+  attr :row_id, :any, default: nil, doc: "the function for generating the row id"
+  attr :row_click, :any, default: nil, doc: "the function for handling phx-click on each row"
+
+  attr :row_item, :any,
+    default: &Function.identity/1,
+    doc: "the function for mapping each row before calling the :col and :action slots"
+
+  slot :col, required: true do
+    attr :label, :string
+  end
+
+  slot :action, doc: "the slot for showing user actions in the last table column"
+
+  def table(assigns) do
+    assigns =
+      with %{rows: %Phoenix.LiveView.LiveStream{}} <- assigns do
+        assign(assigns, row_id: assigns.row_id || fn {id, _item} -> id end)
+      end
+
+    ~H"""
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-border">
+          <th :for={col <- @col} class="px-4 py-3 text-left font-medium text-muted-foreground bg-muted">
+            {col[:label]}
+          </th>
+          <th :if={@action != []} class="px-4 py-3 bg-muted">
+            <span class="sr-only">{gettext("Actions")}</span>
+          </th>
+        </tr>
+      </thead>
+      <tbody id={@id} phx-update={is_struct(@rows, Phoenix.LiveView.LiveStream) && "stream"}>
+        <tr :for={row <- @rows} id={@row_id && @row_id.(row)} class="border-b border-border hover:bg-muted/50 transition-colors">
+          <td
+            :for={col <- @col}
+            phx-click={@row_click && @row_click.(row)}
+            class={["px-4 py-3", @row_click && "hover:cursor-pointer"]}
+          >
+            {render_slot(col, @row_item.(row))}
+          </td>
+          <td :if={@action != []} class="px-4 py-3 w-0 font-semibold">
+            <div class="flex gap-4">
+              <%%= for action <- @action do %>
+                {render_slot(action, @row_item.(row))}
+              <%% end %>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    """
+  end
+
+  ## List
+
+  @doc """
+  Renders a data list.
+
+  ## Examples
+
+      <.list>
+        <:item title="Title">{@post.title}</:item>
+        <:item title="Views">{@post.views}</:item>
+      </.list>
+  """
+  slot :item, required: true do
+    attr :title, :string, required: true
+  end
+
+  def list(assigns) do
+    ~H"""
+    <ul class="divide-y divide-border">
+      <li :for={item <- @item} class="flex gap-4 py-4 px-2">
+        <div class="flex-1">
+          <div class="font-medium text-foreground">{item.title}</div>
+          <div class="text-sm text-muted-foreground">{render_slot(item)}</div>
+        </div>
+      </li>
+    </ul>
+    """
+  end
+
+  ## Icon
+
+  @doc """
+  Renders a [Heroicon](https://heroicons.com).
+
+  ## Examples
+
+      <.icon name="hero-x-mark" />
+      <.icon name="hero-arrow-path" class="ml-1 size-3 motion-safe:animate-spin" />
+  """
+  attr :name, :string, required: true
+  attr :class, :any, default: "size-4"
+
+  def icon(%{name: "hero-" <> _} = assigns) do
+    ~H"""
+    <span class={[@name, @class]} />
+    """
+  end
+
+  ## Badge
+
+  @doc """
+  Renders a badge with Cleopatra styling.
+
+  ## Examples
+
+      <.badge>Default</.badge>
+      <.badge variant="success">Active</.badge>
+      <.badge variant="soft-primary" dot>Online</.badge>
+  """
+  attr :variant, :string,
+    default: "default",
+    values: ~w(default secondary destructive outline success warning info
+               soft-primary soft-secondary soft-destructive soft-success soft-warning soft-info)
+  attr :size, :string, default: "md", values: ~w(sm md lg)
+  attr :dot, :boolean, default: false
+  attr :rounded, :boolean, default: false
+  attr :class, :any, default: nil
+  slot :inner_block, required: true
+
+  def badge(assigns) do
+    ~H"""
+    <span class={[
+      "badge",
+      "badge-#{@variant}",
+      @size != "md" && "badge-#{@size}",
+      @dot && "badge-dot",
+      @rounded && "badge-rounded",
+      @class
+    ]}>
+      {render_slot(@inner_block)}
+    </span>
+    """
+  end
+
+  ## Alert
+
+  @doc """
+  Renders an alert with Cleopatra styling.
+
+  ## Examples
+
+      <.alert variant="info" title="Heads up!">This is an informational alert.</.alert>
+      <.alert variant="destructive" dismissible id="my-alert">Something went wrong.</.alert>
+  """
+  attr :id, :string, default: nil
+  attr :variant, :string, default: "info", values: ~w(info success warning destructive)
+  attr :minimal, :boolean, default: false
+  attr :title, :string, default: nil
+  attr :dismissible, :boolean, default: false
+  attr :class, :any, default: nil
+  slot :inner_block, required: true
+  slot :icon
+
+  def alert(assigns) do
+    assigns = assign_new(assigns, :id, fn -> assigns[:id] || "alert-#{System.unique_integer([:positive])}" end)
+
+    ~H"""
+    <div
+      id={@id}
+      role="alert"
+      class={[
+        "alert",
+        "alert-#{@variant}",
+        @minimal && "alert-minimal",
+        @class
+      ]}
+    >
+      <div :if={@icon != []} class="alert-icon">
+        {render_slot(@icon)}
+      </div>
+      <div :if={@icon == []} class="alert-icon">
+        <.icon :if={@variant == "info"} name="hero-information-circle" class="size-5" />
+        <.icon :if={@variant == "success"} name="hero-check-circle" class="size-5" />
+        <.icon :if={@variant == "warning"} name="hero-exclamation-triangle" class="size-5" />
+        <.icon :if={@variant == "destructive"} name="hero-x-circle" class="size-5" />
+      </div>
+      <div class="alert-content">
+        <p :if={@title} class="alert-title">{@title}</p>
+        <div class="alert-description">{render_slot(@inner_block)}</div>
+      </div>
+      <button :if={@dismissible} type="button" class="alert-close cursor-pointer" phx-click={JS.hide(to: "##{@id}", transition: {"alert-exit", "", ""})} aria-label={gettext("close")}>
+        <.icon name="hero-x-mark" class="size-4" />
+      </button>
+    </div>
+    """
+  end
+
+  ## Avatar
+
+  @doc """
+  Renders an avatar with Cleopatra styling.
+
+  ## Examples
+
+      <.avatar src="/images/user.jpg" alt="John" />
+      <.avatar fallback="JD" size="lg" />
+      <.avatar fallback="AB" status="online" ring />
+  """
+  attr :src, :string, default: nil
+  attr :alt, :string, default: ""
+  attr :fallback, :string, default: nil
+  attr :size, :string, default: "md", values: ~w(xs sm md lg xl 2xl)
+  attr :status, :string, default: nil, values: [nil, "online", "offline", "busy", "away"]
+  attr :rounded, :boolean, default: false
+  attr :ring, :boolean, default: false
+  attr :class, :any, default: nil
+
+  def avatar(assigns) do
+    ~H"""
+    <div class={[
+      "avatar",
+      @size != "md" && "avatar-#{@size}",
+      @rounded && "avatar-rounded",
+      @ring && "avatar-ring",
+      @status && "avatar-status status-#{@status}",
+      @class
+    ]}>
+      <img :if={@src} src={@src} alt={@alt} class="avatar-image" />
+      <span :if={!@src && @fallback} class="avatar-fallback">{@fallback}</span>
+    </div>
+    """
+  end
+
+  ## Card
+
+  @doc """
+  Renders a card with Cleopatra styling.
+
+  ## Examples
+
+      <.card>
+        <:header>Card Title</:header>
+        Card content goes here.
+        <:footer><.button size="sm">Action</.button></:footer>
+      </.card>
+  """
+  attr :class, :any, default: nil
+  slot :inner_block, required: true
+  slot :header
+  slot :footer
+
+  def card(assigns) do
+    ~H"""
+    <div class={["bg-card text-card-foreground rounded-xl border border-border shadow-sm", @class]}>
+      <div :if={@header != []} class="px-6 py-4 border-b border-border">
+        <h3 class="text-lg font-semibold">{render_slot(@header)}</h3>
+      </div>
+      <div class="px-6 py-4">
+        {render_slot(@inner_block)}
+      </div>
+      <div :if={@footer != []} class="px-6 py-4 border-t border-border bg-muted/50">
+        {render_slot(@footer)}
+      </div>
+    </div>
+    """
+  end
+
+  ## Modal
+
+  @doc """
+  Renders a modal dialog.
+
+  ## Examples
+
+      <.modal id="confirm-modal">
+        <:title>Are you sure?</:title>
+        This action cannot be undone.
+        <:actions>
+          <.button variant="destructive" phx-click="delete">Delete</.button>
+          <.button variant="outline" phx-click={hide_modal("confirm-modal")}>Cancel</.button>
+        </:actions>
+      </.modal>
+  """
+  attr :id, :string, required: true
+  attr :size, :string, default: "default", values: ~w(sm default lg xl full)
+  attr :show, :boolean, default: true
+  attr :on_cancel, JS, default: %JS{}
+  slot :inner_block, required: true
+  slot :title
+  slot :subtitle
+  slot :actions
+
+  def modal(assigns) do
+    ~H"""
+    <div id={@id} class="hidden relative z-[100]" phx-mounted={@show && show_modal(@id)} phx-remove={hide_modal(@id)}>
+      <div id={"#{@id}-bg"} class="modal-backdrop" aria-hidden="true" />
+      <div
+        class={["modal", @size != "default" && "modal-#{@size}"]}
+        aria-labelledby={"#{@id}-title"}
+        role="dialog"
+        aria-modal="true"
+        tabindex="0"
+      >
+        <.focus_wrap
+          id={"#{@id}-container"}
+          phx-window-keydown={hide_modal(@on_cancel, @id)}
+          phx-key="escape"
+          phx-click-away={hide_modal(@on_cancel, @id)}
+          class="modal-content"
+        >
+          <div :if={@title != []} class="modal-header">
+            <div>
+              <h2 id={"#{@id}-title"} class="modal-title">{render_slot(@title)}</h2>
+              <p :if={@subtitle != []} class="text-sm text-muted-foreground mt-1">{render_slot(@subtitle)}</p>
+            </div>
+            <button type="button" class="modal-close" phx-click={hide_modal(@on_cancel, @id)} aria-label={gettext("close")}>
+              <.icon name="hero-x-mark" class="size-5" />
+            </button>
+          </div>
+          <div class="modal-body">
+            {render_slot(@inner_block)}
+          </div>
+          <div :if={@actions != []} class="modal-footer">
+            {render_slot(@actions)}
+          </div>
+        </.focus_wrap>
+      </div>
+    </div>
+    """
+  end
+
+  ## Accordion
+
+  @doc """
+  Renders an accordion.
+
+  ## Examples
+
+      <.accordion>
+        <.accordion_item title="Section 1">Content 1</.accordion_item>
+        <.accordion_item title="Section 2">Content 2</.accordion_item>
+      </.accordion>
+  """
+  attr :variant, :string, default: "default", values: ~w(default flush separated)
+  attr :class, :any, default: nil
+  slot :inner_block, required: true
+
+  def accordion(assigns) do
+    ~H"""
+    <div class={[
+      "accordion",
+      @variant == "flush" && "accordion-flush",
+      @variant == "separated" && "accordion-separated",
+      @class
+    ]}>
+      {render_slot(@inner_block)}
+    </div>
+    """
+  end
+
+  @doc """
+  Renders an accordion item.
+  """
+  attr :title, :string, required: true
+  attr :open, :boolean, default: false
+  slot :inner_block, required: true
+
+  def accordion_item(assigns) do
+    id = "accordion-#{System.unique_integer([:positive])}"
+    assigns = assign(assigns, :id, id)
+
+    ~H"""
+    <div class="accordion-item">
+      <button
+        type="button"
+        class="accordion-trigger"
+        aria-expanded={to_string(@open)}
+        phx-click={
+          JS.toggle_class("is-open", to: "##{@id}-content")
+          |> JS.toggle_attribute({"aria-expanded", "true", "false"})
+        }
+      >
+        {@title}
+        <.icon name="hero-chevron-down" class="accordion-icon" />
+      </button>
+      <div id={"#{@id}-content"} class={["accordion-content", @open && "is-open"]}>
+        <div class="accordion-body">
+          {render_slot(@inner_block)}
+        </div>
+      </div>
+    </div>
+    """
+  end
+
+  ## Tabs
+
+  @doc """
+  Renders tabs with Cleopatra styling.
+
+  ## Examples
+
+      <.tabs id="my-tabs" variant="underline">
+        <.tab label="Tab 1">Content for tab 1</.tab>
+        <.tab label="Tab 2">Content for tab 2</.tab>
+      </.tabs>
+  """
+  attr :id, :string, required: true
+  attr :variant, :string, default: "default", values: ~w(default underline pills)
+  attr :class, :any, default: nil
+  slot :tab, required: true do
+    attr :label, :string, required: true
+  end
+
+  def tabs(assigns) do
+    ~H"""
+    <div id={@id} class={[
+      "tabs",
+      @variant == "underline" && "tabs-underline",
+      @variant == "pills" && "tabs-pills",
+      @class
+    ]}>
+      <div class="tabs-list" role="tablist">
+        <button
+          :for={{tab, idx} <- Enum.with_index(@tab)}
+          type="button"
+          role="tab"
+          class={["tabs-trigger", idx == 0 && "is-active"]}
+          phx-click={
+            JS.remove_class("is-active", to: "##{@id} .tabs-trigger")
+            |> JS.add_class("is-active")
+            |> JS.hide(to: "##{@id} .tabs-panel")
+            |> JS.show(to: "##{@id}-panel-#{idx}")
+            |> JS.remove_class("is-active", to: "##{@id} .tabs-panel")
+            |> JS.add_class("is-active", to: "##{@id}-panel-#{idx}")
+          }
+        >
+          {tab.label}
+        </button>
+      </div>
+      <div class="tabs-content">
+        <div
+          :for={{tab, idx} <- Enum.with_index(@tab)}
+          id={"#{@id}-panel-#{idx}"}
+          role="tabpanel"
+          class={["tabs-panel", idx == 0 && "is-active"]}
+        >
+          {render_slot(tab)}
+        </div>
+      </div>
+    </div>
+    """
+  end
+
+  ## Breadcrumb
+
+  @doc """
+  Renders a breadcrumb navigation.
+
+  ## Examples
+
+      <.breadcrumb>
+        <:item navigate={~p"/"} label="Home" />
+        <:item navigate={~p"/users"} label="Users" />
+        <:item label="Profile" />
+      </.breadcrumb>
+  """
+  attr :separator, :string, default: "/"
+  attr :contained, :boolean, default: false
+  attr :class, :any, default: nil
+  slot :item, required: true do
+    attr :navigate, :string
+    attr :href, :string
+    attr :label, :string, required: true
+  end
+
+  def breadcrumb(assigns) do
+    ~H"""
+    <nav class={["breadcrumb", @contained && "breadcrumb-contained", @class]} aria-label="Breadcrumb">
+      <ol class="breadcrumb-list">
+        <li :for={{item, idx} <- Enum.with_index(@item)} class="breadcrumb-item">
+          <span :if={idx > 0} class="breadcrumb-separator">{@separator}</span>
+          <%%= if idx == length(@item) - 1 do %>
+            <span class="breadcrumb-page">{item.label}</span>
+          <%% else %>
+            <.link :if={item[:navigate]} navigate={item.navigate} class="breadcrumb-link">{item.label}</.link>
+            <.link :if={item[:href]} href={item.href} class="breadcrumb-link">{item.label}</.link>
+            <span :if={!item[:navigate] && !item[:href]} class="breadcrumb-link">{item.label}</span>
+          <%% end %>
+        </li>
+      </ol>
+    </nav>
+    """
+  end
+
+  ## Pagination
+
+  @doc """
+  Renders pagination controls.
+
+  ## Examples
+
+      <.pagination page={1} total_pages={10} on_page="page-changed" />
+  """
+  attr :page, :integer, required: true
+  attr :total_pages, :integer, required: true
+  attr :size, :string, default: "default", values: ~w(sm default lg)
+  attr :variant, :string, default: "default", values: ~w(default simple outline)
+  attr :on_page, :string, default: "page-changed"
+  attr :class, :any, default: nil
+
+  def pagination(assigns) do
+    ~H"""
+    <nav class={[
+      "pagination",
+      @size != "default" && "pagination-#{@size}",
+      @variant != "default" && "pagination-#{@variant}",
+      @class
+    ]} aria-label="Pagination">
+      <button class="pagination-item" disabled={@page <= 1} phx-click={@on_page} phx-value-page={@page - 1}>
+        <.icon name="hero-chevron-left" class="size-4" />
+      </button>
+      <%%= for p <- pagination_range(@page, @total_pages) do %>
+        <%%= if p == :ellipsis do %>
+          <span class="pagination-ellipsis">...</span>
+        <%% else %>
+          <button class={["pagination-item", p == @page && "is-active"]} phx-click={@on_page} phx-value-page={p}>
+            {p}
+          </button>
+        <%% end %>
+      <%% end %>
+      <button class="pagination-item" disabled={@page >= @total_pages} phx-click={@on_page} phx-value-page={@page + 1}>
+        <.icon name="hero-chevron-right" class="size-4" />
+      </button>
+    </nav>
+    """
+  end
+
+  defp pagination_range(_page, total) when total <= 7, do: Enum.to_list(1..total)
+  defp pagination_range(page, total) do
+    cond do
+      page <= 3 -> [1, 2, 3, 4, :ellipsis, total]
+      page >= total - 2 -> [1, :ellipsis, total - 3, total - 2, total - 1, total]
+      true -> [1, :ellipsis, page - 1, page, page + 1, :ellipsis, total]
+    end
+  end
+
+  ## Progress
+
+  @doc """
+  Renders a progress bar.
+
+  ## Examples
+
+      <.progress value={75} />
+      <.progress value={50} color="success" striped animated />
+      <.progress indeterminate />
+  """
+  attr :value, :integer, default: 0
+  attr :size, :string, default: "default", values: ~w(xs sm default lg xl)
+  attr :color, :string, default: "default", values: ~w(default success warning destructive info)
+  attr :striped, :boolean, default: false
+  attr :animated, :boolean, default: false
+  attr :indeterminate, :boolean, default: false
+  attr :labeled, :boolean, default: false
+  attr :class, :any, default: nil
+
+  def progress(assigns) do
+    ~H"""
+    <div class={[
+      "progress",
+      @size != "default" && "progress-#{@size}",
+      @color != "default" && "progress-#{@color}",
+      @striped && "progress-striped",
+      @animated && "progress-animated",
+      @indeterminate && "progress-indeterminate",
+      @labeled && "progress-labeled",
+      @class
+    ]} role="progressbar" aria-valuenow={@value} aria-valuemin="0" aria-valuemax="100">
+      <div class="progress-bar" style={"width: #{@value}%"}>
+        <span :if={@labeled}>{@value}%</span>
+      </div>
+    </div>
+    """
+  end
+
+  ## Tooltip
+
+  @doc """
+  Renders a tooltip (pure CSS hover).
+
+  ## Examples
+
+      <.tooltip text="More info" position="top">
+        <.button variant="ghost" icon_only><.icon name="hero-question-mark-circle" /></.button>
+      </.tooltip>
+  """
+  attr :text, :string, required: true
+  attr :position, :string, default: "top", values: ~w(top bottom left right)
+  attr :dark, :boolean, default: false
+  attr :class, :any, default: nil
+  slot :inner_block, required: true
+
+  def tooltip(assigns) do
+    ~H"""
+    <div class={["tooltip", "tooltip-#{@position}", @dark && "tooltip-dark", @class]}>
+      {render_slot(@inner_block)}
+      <div class="tooltip-content">{@text}</div>
+    </div>
+    """
+  end
+
+  ## Dropdown Menu
+
+  @doc """
+  Renders a dropdown menu.
+
+  ## Examples
+
+      <.dropdown_menu id="actions-menu">
+        <:trigger>
+          <.button variant="outline">Actions</.button>
+        </:trigger>
+        <.dropdown_item>Edit</.dropdown_item>
+        <.dropdown_divider />
+        <.dropdown_item variant="destructive">Delete</.dropdown_item>
+      </.dropdown_menu>
+  """
+  attr :id, :string, required: true
+  attr :position, :string, default: "left", values: ~w(left right up)
+  attr :class, :any, default: nil
+  slot :trigger, required: true
+  slot :inner_block, required: true
+
+  def dropdown_menu(assigns) do
+    ~H"""
+    <div id={@id} class={["dropdown", @class]}>
+      <div class="dropdown-trigger" phx-click={JS.toggle_class("is-open", to: "##{@id} .dropdown-menu")}>
+        {render_slot(@trigger)}
+      </div>
+      <div class={[
+        "dropdown-menu",
+        @position == "right" && "dropdown-menu-right",
+        @position == "up" && "dropdown-menu-up"
+      ]} phx-click-away={JS.remove_class("is-open", to: "##{@id} .dropdown-menu")}>
+        {render_slot(@inner_block)}
+      </div>
+    </div>
+    """
+  end
+
+  attr :variant, :string, default: "default", values: ~w(default destructive)
+  attr :class, :any, default: nil
+  attr :rest, :global
+  slot :inner_block, required: true
+
+  def dropdown_item(assigns) do
+    ~H"""
+    <button class={["dropdown-item", @variant == "destructive" && "dropdown-item-destructive", @class]} {@rest}>
+      {render_slot(@inner_block)}
+    </button>
+    """
+  end
+
+  attr :label, :string, default: nil
+  def dropdown_header(assigns) do
+    ~H"""
+    <div class="dropdown-header">{@label || render_slot(@inner_block)}</div>
+    """
+  end
+
+  slot :inner_block
+
+  def dropdown_divider(assigns) do
+    ~H"""
+    <div class="dropdown-divider" />
+    """
+  end
+
+  ## Drawer
+
+  @doc """
+  Renders a drawer (slide-out panel).
+
+  ## Examples
+
+      <.drawer id="settings-drawer" position="right">
+        <:title>Settings</:title>
+        Settings content here.
+      </.drawer>
+  """
+  attr :id, :string, required: true
+  attr :position, :string, default: "right", values: ~w(left right top bottom)
+  attr :size, :string, default: "default", values: ~w(sm default lg xl full)
+  attr :on_cancel, JS, default: %JS{}
+  slot :inner_block, required: true
+  slot :title
+  slot :actions
+
+  def drawer(assigns) do
+    ~H"""
+    <div id={@id} class="hidden relative z-[100]" phx-remove={hide_drawer(@id)}>
+      <div
+        id={"#{@id}-bg"}
+        class="drawer-backdrop"
+        aria-hidden="true"
+        phx-click={hide_drawer(@on_cancel, @id)}
+      />
+      <div
+        id={"#{@id}-panel"}
+        class={[
+          "drawer",
+          "drawer-#{@position}",
+          @size != "default" && "drawer-#{@size}"
+        ]}
+        phx-window-keydown={hide_drawer(@on_cancel, @id)}
+        phx-key="escape"
+      >
+        <div :if={@title != []} class="drawer-header">
+          <h2 class="drawer-title">{render_slot(@title)}</h2>
+          <button type="button" class="drawer-close" phx-click={hide_drawer(@on_cancel, @id)} aria-label={gettext("close")}>
+            <.icon name="hero-x-mark" class="size-5" />
+          </button>
+        </div>
+        <div class="drawer-body">
+          {render_slot(@inner_block)}
+        </div>
+        <div :if={@actions != []} class="drawer-footer">
+          {render_slot(@actions)}
+        </div>
+      </div>
+    </div>
+    """
+  end
+
+  ## Separator
+
+  @doc """
+  Renders a separator line.
+
+  ## Examples
+
+      <.separator />
+      <.separator orientation="vertical" />
+      <.separator label="OR" />
+  """
+  attr :orientation, :string, default: "horizontal", values: ~w(horizontal vertical)
+  attr :dashed, :boolean, default: false
+  attr :thick, :boolean, default: false
+  attr :label, :string, default: nil
+  attr :class, :any, default: nil
+
+  def separator(assigns) do
+    ~H"""
+    <div :if={@label} class={["separator-label", @class]}>{@label}</div>
+    <div :if={!@label} class={[
+      "separator",
+      "separator-#{@orientation}",
+      @dashed && "separator-dashed",
+      @thick && "separator-thick",
+      @class
+    ]} role="separator" aria-orientation={@orientation} />
+    """
+  end
+
+  ## Skeleton
+
+  @doc """
+  Renders a skeleton loading placeholder.
+
+  ## Examples
+
+      <.skeleton type="text" />
+      <.skeleton type="avatar" shimmer />
+      <.skeleton type="card" />
+  """
+  attr :type, :string,
+    default: "text",
+    values: ~w(text heading avatar avatar-sm avatar-lg button card image circle)
+  attr :shimmer, :boolean, default: false
+  attr :class, :any, default: nil
+
+  def skeleton(assigns) do
+    ~H"""
+    <div class={[
+      "skeleton",
+      "skeleton-#{@type}",
+      @shimmer && "skeleton-shimmer",
+      @class
+    ]} />
+    """
+  end
+
+  ## JS Commands
+
+  def show(js \\ %JS{}, selector) do
+    JS.show(js,
+      to: selector,
+      time: 300,
+      transition:
+        {"transition-all ease-out duration-300",
+         "opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95",
+         "opacity-100 translate-y-0 sm:scale-100"}
+    )
+  end
+
+  def hide(js \\ %JS{}, selector) do
+    JS.hide(js,
+      to: selector,
+      time: 200,
+      transition:
+        {"transition-all ease-in duration-200", "opacity-100 translate-y-0 sm:scale-100",
+         "opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"}
+    )
+  end
+
+  def show_modal(js \\ %JS{}, id) when is_binary(id) do
+    js
+    |> JS.show(to: "##{id}")
+    |> JS.show(
+      to: "##{id}-bg",
+      time: 300,
+      transition: {"transition-all ease-out duration-300", "opacity-0", "opacity-100"}
+    )
+    |> JS.show(
+      to: "##{id}-container",
+      time: 300,
+      transition:
+        {"transition-all ease-out duration-300",
+         "opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95",
+         "opacity-100 translate-y-0 sm:scale-100"}
+    )
+    |> JS.add_class("overflow-hidden", to: "body")
+    |> JS.focus_first(to: "##{id}-container")
+  end
+
+  def hide_modal(js \\ %JS{}, id) do
+    js
+    |> JS.hide(
+      to: "##{id}-bg",
+      time: 200,
+      transition: {"transition-all ease-in duration-200", "opacity-100", "opacity-0"}
+    )
+    |> JS.hide(
+      to: "##{id}-container",
+      time: 200,
+      transition:
+        {"transition-all ease-in duration-200",
+         "opacity-100 translate-y-0 sm:scale-100",
+         "opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"}
+    )
+    |> JS.hide(to: "##{id}", transition: {"block", "block", "hidden"})
+    |> JS.remove_class("overflow-hidden", to: "body")
+    |> JS.pop_focus()
+  end
+
+  def show_drawer(js \\ %JS{}, id) when is_binary(id) do
+    js
+    |> JS.show(to: "##{id}")
+    |> JS.show(
+      to: "##{id}-bg",
+      time: 300,
+      transition: {"transition-all ease-out duration-300", "opacity-0", "opacity-100"}
+    )
+    |> JS.add_class("is-open", to: "##{id}-panel")
+    |> JS.add_class("overflow-hidden", to: "body")
+  end
+
+  def hide_drawer(js \\ %JS{}, id) do
+    js
+    |> JS.hide(
+      to: "##{id}-bg",
+      time: 300,
+      transition: {"transition-all ease-in duration-300", "opacity-100", "opacity-0"}
+    )
+    |> JS.remove_class("is-open", to: "##{id}-panel")
+    |> JS.hide(to: "##{id}", time: 300)
+    |> JS.remove_class("overflow-hidden", to: "body")
+  end
+
+  @doc """
+  Translates an error message using gettext.
+  """
+  def translate_error({msg, opts}) do
+    if count = opts[:count] do
+      Gettext.dngettext(<%= web_module %>.Gettext, "errors", msg, msg, count, opts)
+    else
+      Gettext.dgettext(<%= web_module %>.Gettext, "errors", msg, opts)
+    end
+  end
+
+  @doc """
+  Translates the errors for a field from a keyword list of errors.
+  """
+  def translate_errors(errors, field) when is_list(errors) do
+    for {^field, {msg, opts}} <- errors, do: translate_error({msg, opts})
+  end
+end

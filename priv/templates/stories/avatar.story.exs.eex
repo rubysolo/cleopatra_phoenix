@@ -1,0 +1,93 @@
+defmodule Storybook.Components.CoreComponents.Avatar do
+  use PhoenixStorybook.Story, :component
+
+  def function, do: &<%= web_module %>.CoreComponents.avatar/1
+  def render_source, do: :function
+
+  def variations do
+    [
+      %VariationGroup{
+        id: :sizes,
+        description: "Avatar sizes",
+        variations:
+          for size <- ~w(xs sm md lg xl 2xl) do
+            %Variation{
+              id: String.to_atom("size_#{size}"),
+              attributes: %{
+                fallback: "AB",
+                size: size
+              }
+            }
+          end
+      },
+      %Variation{
+        id: :with_image,
+        description: "Avatar with image",
+        attributes: %{
+          src: "https://i.pravatar.cc/150?img=32",
+          alt: "User avatar"
+        }
+      },
+      %VariationGroup{
+        id: :fallback_initials,
+        description: "Fallback initials",
+        variations: [
+          %Variation{
+            id: :initials_jd,
+            attributes: %{fallback: "JD"}
+          },
+          %Variation{
+            id: :initials_ab,
+            attributes: %{fallback: "AB", variant: "secondary"}
+          },
+          %Variation{
+            id: :initials_zk,
+            attributes: %{fallback: "ZK"}
+          }
+        ]
+      },
+      %VariationGroup{
+        id: :status,
+        description: "Status indicators",
+        variations:
+          for status <- ~w(online offline busy away) do
+            %Variation{
+              id: String.to_atom(status),
+              attributes: %{
+                fallback: String.upcase(String.first(status)),
+                status: status
+              }
+            }
+          end
+      },
+      %VariationGroup{
+        id: :modifiers,
+        description: "Avatar modifiers",
+        variations: [
+          %Variation{
+            id: :ring,
+            attributes: %{
+              fallback: "RG",
+              ring: true
+            }
+          },
+          %Variation{
+            id: :rounded,
+            attributes: %{
+              fallback: "RD",
+              rounded: true
+            }
+          },
+          %Variation{
+            id: :ring_and_rounded,
+            attributes: %{
+              fallback: "RR",
+              ring: true,
+              rounded: true
+            }
+          }
+        ]
+      }
+    ]
+  end
+end

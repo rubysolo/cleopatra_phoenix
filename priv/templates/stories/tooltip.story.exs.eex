@@ -1,0 +1,36 @@
+defmodule Storybook.Components.CoreComponents.Tooltip do
+  use PhoenixStorybook.Story, :component
+
+  def function, do: &<%= web_module %>.CoreComponents.tooltip/1
+  def imports, do: [{<%= web_module %>.CoreComponents, button: 1}]
+  def render_source, do: :function
+
+  def variations do
+    [
+      %VariationGroup{
+        id: :positions,
+        description: "Tooltip positions",
+        variations:
+          for position <- ~w(top bottom left right) do
+            %Variation{
+              id: String.to_atom(position),
+              attributes: %{
+                text: "Tooltip on #{position}",
+                position: position
+              },
+              slots: ["<.button variant=\"outline\">#{String.capitalize(position)}</.button>"]
+            }
+          end
+      },
+      %Variation{
+        id: :dark,
+        description: "Dark tooltip",
+        attributes: %{
+          text: "Dark tooltip",
+          dark: true
+        },
+        slots: ["<.button variant=\"outline\">Dark</.button>"]
+      }
+    ]
+  end
+end
